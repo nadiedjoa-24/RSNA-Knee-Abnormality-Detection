@@ -1,0 +1,13 @@
+{
+  "id": "theophilenadiedjoa/rsna-knee-image-baseline",
+  "title": "RSNA Knee - Image Baseline (skeleton)",
+  "code_file": "image_baseline.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": false,
+  "competition_sources": ["rsna-knee-abnormality-detection"],
+  "dataset_sources": [],
+  "kernel_sources": []
+}
