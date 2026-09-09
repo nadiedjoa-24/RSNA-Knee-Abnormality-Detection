@@ -8,6 +8,6 @@
   "enable_gpu": true,
   "enable_internet": false,
   "competition_sources": ["rsna-knee-abnormality-detection"],
-  "dataset_sources": [],
+  "dataset_sources": ["theophilenadiedjoa/resnet18-imagenet-weights"],
   "kernel_sources": []
 }
