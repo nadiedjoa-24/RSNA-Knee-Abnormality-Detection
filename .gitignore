@@ -2,6 +2,7 @@ data/
 models/*.pt
 models/*.pth
 models/*.ckpt
+models/*.pkl
 submissions/*.csv
 __pycache__/
 *.pyc

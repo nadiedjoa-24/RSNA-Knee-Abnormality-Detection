@@ -34,7 +34,25 @@ StudyInstanceUID,ACL,MCL,Medial Meniscus,Lateral Meniscus,Medial OA,Lateral OA,P
 
 ## Structure
 - `data/` — competition data (not tracked in git, see .gitignore)
-- `notebooks/` — exploration / experiments
-- `src/` — reusable code (dataset, model, training loop, inference)
+- `notebooks/` — exploration / experiments only, not for reusable code
+- `src/` — reusable code (config, data loading, models)
+- `train.py` — entry point: cross-validate and fit models, save to `models/`
+- `predict.py` — entry point: generate `submissions/submission.csv`
 - `models/` — saved weights/checkpoints
 - `submissions/` — generated submission.csv files
+
+## Data notes
+- `train.csv` has 4407 rows (reports), but only **58 have all 12 labels filled in** —
+  the rest are unlabeled reports, candidates for semi-supervised / weak-supervision use.
+- The public `test.csv` is a 3-row stub with only `StudyInstanceUID` (no `Report`,
+  no images) — standard Kaggle code-competition pattern. The real hidden test set is
+  substituted when the submission notebook runs on Kaggle's servers.
+- Images (`.dcm`, ~247 GB total) are intentionally not downloaded locally (disk quota).
+  Image-based modeling should happen directly in Kaggle Notebooks, where the data is
+  mounted for free.
+
+## Current baseline
+Text-only: TF-IDF (char n-grams, to stay robust across the reports' many languages) +
+per-label logistic regression, trained on the 58 labeled examples. Cross-validated
+macro AUC ≈ 0.58 — meant to validate the pipeline (loading → CV → submission format),
+not as a competitive model. Run with `python train.py` then `python predict.py`.
