@@ -51,6 +51,10 @@ StudyInstanceUID,ACL,MCL,Medial Meniscus,Lateral Meniscus,Medial OA,Lateral OA,P
   Image-based modeling should happen directly in Kaggle Notebooks, where the data is
   mounted for free.
 
+## Experiment log
+Every validated run (local or Kaggle) gets a row in [`experiments.md`](experiments.md),
+so progress isn't lost between sessions. Add a row there whenever you get a new score.
+
 ## Current baseline
 Text-only: TF-IDF (char n-grams, to stay robust across the reports' many languages) +
 per-label logistic regression, trained on the 58 labeled examples. Cross-validated
