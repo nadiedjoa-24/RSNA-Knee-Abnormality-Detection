@@ -9,40 +9,48 @@ baseline meant to validate the pipeline (loading, CV, AUC, submission format),
 not to be competitive on its own.
 """
 
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import SGDClassifier
 from sklearn.pipeline import Pipeline
 
 from src.config import LABELS, RANDOM_STATE
 
+PipelineFactory = Callable[[], Pipeline]
 
-def build_pipeline() -> Pipeline:
+
+def build_pipeline(
+    analyzer: str = "char_wb",
+    ngram_range: tuple = (4, 6),
+    classifier=None,
+) -> Pipeline:
+    # Picked via model_search.py: char(4,6) n-grams + SGD(log_loss) beat the
+    # original char(3,5)+LogisticRegression default (0.604 vs 0.564 macro AUC,
+    # 5-fold CV on the 58 labeled studies).
+    if classifier is None:
+        classifier = SGDClassifier(
+            loss="log_loss", alpha=1e-3, class_weight="balanced", random_state=RANDOM_STATE
+        )
     return Pipeline(
         [
             (
                 "tfidf",
                 TfidfVectorizer(
-                    analyzer="char_wb",
-                    ngram_range=(3, 5),
+                    analyzer=analyzer,
+                    ngram_range=ngram_range,
                     min_df=2,
                     sublinear_tf=True,
                 ),
             ),
-            (
-                "clf",
-                LogisticRegression(
-                    class_weight="balanced",
-                    max_iter=1000,
-                    random_state=RANDOM_STATE,
-                ),
-            ),
+            ("clf", classifier),
         ]
     )
 
 
-def compute_oof(df: pd.DataFrame, folds: np.ndarray) -> pd.DataFrame:
+def compute_oof(df: pd.DataFrame, folds: np.ndarray, pipeline_factory: PipelineFactory = build_pipeline) -> pd.DataFrame:
     """Out-of-fold predictions for all 12 labels, aligned with `folds` (see
     src.folds.make_folds) so they can be ensembled with other models' OOF
     predictions computed on the same fold assignment."""
@@ -58,20 +66,20 @@ def compute_oof(df: pd.DataFrame, folds: np.ndarray) -> pd.DataFrame:
             if len(np.unique(y_train)) < 2:
                 preds[val_idx] = y_train.mean()
                 continue
-            pipe = build_pipeline()
+            pipe = pipeline_factory()
             pipe.fit(texts[train_idx], y_train)
             preds[val_idx] = pipe.predict_proba(texts[val_idx])[:, 1]
         oof[label] = preds
     return oof
 
 
-def train_final_models(df: pd.DataFrame) -> dict:
+def train_final_models(df: pd.DataFrame, pipeline_factory: PipelineFactory = build_pipeline) -> dict:
     """Fit one pipeline per label on all labeled data. Returns {label: pipeline}."""
     texts = df["Report"].values
     models = {}
     for label in LABELS:
         y = df[label].values.astype(int)
-        pipe = build_pipeline()
+        pipe = pipeline_factory()
         pipe.fit(texts, y)
         models[label] = pipe
     return models
