@@ -4,6 +4,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT_DIR / "data"
 MODELS_DIR = ROOT_DIR / "models"
 SUBMISSIONS_DIR = ROOT_DIR / "submissions"
+OOF_DIR = ROOT_DIR / "oof"
 
 TRAIN_CSV = DATA_DIR / "train.csv"
 TRAIN_SERIES_CSV = DATA_DIR / "train_series.csv"

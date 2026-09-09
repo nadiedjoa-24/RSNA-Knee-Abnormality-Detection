@@ -45,11 +45,23 @@ StudyInstanceUID,ACL,MCL,Medial Meniscus,Lateral Meniscus,Medial OA,Lateral OA,P
 - `train.csv` has 4407 rows (reports), but only **58 have all 12 labels filled in** —
   the rest are unlabeled reports, candidates for semi-supervised / weak-supervision use.
 - The public `test.csv` is a 3-row stub with only `StudyInstanceUID` (no `Report`,
-  no images) — standard Kaggle code-competition pattern. The real hidden test set is
-  substituted when the submission notebook runs on Kaggle's servers.
-- Images (`.dcm`, ~247 GB total) are intentionally not downloaded locally (disk quota).
-  Image-based modeling should happen directly in Kaggle Notebooks, where the data is
-  mounted for free.
+  no images) — standard Kaggle code-competition pattern. The real hidden test set
+  (~1300 studies, per the official dataset description) is substituted when the
+  submission notebook runs on Kaggle's servers; `Report` is not provided at test time.
+- Images (`.dcm`) are intentionally not downloaded locally (disk quota) — the full
+  dataset is **819,640 files / 569.76 GB**. Image-based modeling should happen
+  directly in Kaggle Notebooks, where the data is mounted for free.
+- On Kaggle, competition data mounts at `/kaggle/input/competitions/<slug>/` (not
+  `/kaggle/input/<slug>/`).
+- The competition's "Models" tab lists community-shared pretrained checkpoints
+  (DINOv2, BiomedCLIP, EfficientNet...) usable as `dataset_sources`/`model_sources`
+  the same way we attached ResNet18's ImageNet weights — BiomedCLIP in particular
+  is pretrained on biomedical images, a likely better starting point than ImageNet
+  for MRI.
+- The competition's public "Code" tab and "Leaderboard" are expected to show other
+  participants' shared notebooks and scores — that's normal Kaggle transparency
+  (leaderboards are public by design), not a data leak. It does **not** expose raw
+  prediction files for participants who haven't chosen to share their notebook.
 
 ## Experiment log
 Every validated run (local or Kaggle) gets a row in [`experiments.md`](experiments.md),

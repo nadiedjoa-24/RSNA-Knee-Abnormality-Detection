@@ -13,8 +13,6 @@ import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold
-from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import Pipeline
 
 from src.config import LABELS, RANDOM_STATE
@@ -44,27 +42,27 @@ def build_pipeline() -> Pipeline:
     )
 
 
-def cross_val_auc(df: pd.DataFrame, n_splits: int = 5) -> dict:
-    """Per-label out-of-fold AUC using stratified k-fold on the labeled subset."""
+def compute_oof(df: pd.DataFrame, folds: np.ndarray) -> pd.DataFrame:
+    """Out-of-fold predictions for all 12 labels, aligned with `folds` (see
+    src.folds.make_folds) so they can be ensembled with other models' OOF
+    predictions computed on the same fold assignment."""
     texts = df["Report"].values
-    scores = {}
+    oof = pd.DataFrame({"StudyInstanceUID": df["StudyInstanceUID"].values})
     for label in LABELS:
         y = df[label].values.astype(int)
-        if len(np.unique(y)) < 2:
-            scores[label] = float("nan")
-            continue
-        n_splits_label = min(n_splits, np.bincount(y).min())
-        if n_splits_label < 2:
-            scores[label] = float("nan")
-            continue
-        skf = StratifiedKFold(n_splits=n_splits_label, shuffle=True, random_state=RANDOM_STATE)
-        oof = np.zeros(len(y), dtype=float)
-        for train_idx, val_idx in skf.split(texts, y):
+        preds = np.full(len(y), 0.5)
+        for fold_id in np.unique(folds):
+            train_idx = folds != fold_id
+            val_idx = folds == fold_id
+            y_train = y[train_idx]
+            if len(np.unique(y_train)) < 2:
+                preds[val_idx] = y_train.mean()
+                continue
             pipe = build_pipeline()
-            pipe.fit(texts[train_idx], y[train_idx])
-            oof[val_idx] = pipe.predict_proba(texts[val_idx])[:, 1]
-        scores[label] = roc_auc_score(y, oof)
-    return scores
+            pipe.fit(texts[train_idx], y_train)
+            preds[val_idx] = pipe.predict_proba(texts[val_idx])[:, 1]
+        oof[label] = preds
+    return oof
 
 
 def train_final_models(df: pd.DataFrame) -> dict:
