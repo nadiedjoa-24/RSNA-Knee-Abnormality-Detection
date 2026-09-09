@@ -9,9 +9,9 @@ our own local/CV validation split — not the real leaderboard score.
 
 ## Current best (as of 2026-09-10, overnight run)
 - **Text**: char(4,6) TF-IDF + SGD(log_loss, alpha=1e-3) — macro AUC **0.601** (`src/text_baseline.py`, picked via `model_search.py`).
-- **Image**: ResNet18, 5 evenly-spaced slices/study averaged in feature space, ImageNet-pretrained — macro AUC **0.548** (`kaggle/image_baseline.ipynb`).
-- **Ensemble**: weighted average, 0.7 text / 0.3 image — macro AUC **~0.607** (`ensemble.py`), best found blend weight; barely above text alone, still within CV noise range at n=58.
-- All numbers are 5-fold CV on the 58 labeled studies — noisy at this sample size, treat differences under ~0.02-0.03 as inconclusive.
+- **Image**: ResNet18, 5 evenly-spaced slices/study averaged in feature space, ImageNet-pretrained, **train-only flip+rotation augmentation** — macro AUC **0.590** (`kaggle/image_baseline.ipynb`).
+- **Ensemble**: 50/50 text/image average — macro AUC **0.616** (`ensemble.py`), clearly above either model alone (+0.015 over text, +0.026 over image) — the most convincing ensemble result so far, now that the two models are closer in strength and presumably make more independent mistakes.
+- All numbers are 5-fold CV on the 58 labeled studies — noisy at this sample size, treat differences under ~0.02-0.03 as inconclusive on their own, but this run's gain is corroborated by both models improving and the ensemble improving in step.
 
 | Date | Run | Where | Config | Macro AUC | Commit | Notes |
 |------|-----|-------|--------|-----------|--------|-------|
@@ -28,10 +28,12 @@ our own local/CV validation split — not the real leaderboard score.
 | 2026-09-10 | Self-training / pseudo-labeling | Local | Fold-local text classifier pseudo-labels the ~4349 unlabeled reports above a confidence threshold, added to that fold's training data (`src/pseudo_label.py`, `pseudo_label_search.py`) | 0.567-0.597 (worse than 0.601 no-pseudo-labeling baseline, at every threshold tried: 0.95/0.9/0.8) | `19c2959` | **Negative result.** Hurts at every threshold tested — with only ~46 labeled examples per fold, the fold-local classifier isn't reliable enough to generate correct pseudo-labels, and its mistakes get compounded. Not pursuing this approach further unless the labeled seed set grows a lot, or we get an independent (non-self) source of pseudo-labels (e.g. keyword rules as originally considered, or a stronger classifier). |
 
 | 2026-09-10 | Image baseline v6 (multi-plane) | Kaggle (CPU) | Same as v5, but 2 slices from each of Sagittal/Axial/Coronal (6 total) instead of 5 slices from one plane | 0.547 | `5c0b68a` | **No improvement over v5's 0.548** — essentially identical, despite ~40% longer runtime (18 vs 13 min). Reverted `kaggle/image_baseline.ipynb` back to the v5 single-plane multi-slice version (simpler, faster, same score) — this experiment's code is preserved in commit `19c2959` if revisited. Ensemble with text barely moved either (0.608, best weight now ~0.5-0.6). |
+| 2026-09-10 | Image baseline v7 (augmentation) | Kaggle (CPU) | Same as v5, + train-only random horizontal flip and ±10° rotation | **0.590** | `f11f11b` | **Clear improvement** over v5's 0.548 (+0.042) — the biggest single gain of the night for the image model. Train loss converges slower/higher than without augmentation (expected: harder training signal, less overfitting to 58 examples). Best label: Medial OA (0.808). Still weak: Fracture (0.417), ACL (0.516). |
+| 2026-09-10 | Text + image ensemble (post-augmentation) | Local | 50/50 average of text (0.601) + augmented image (0.590) OOF — `ensemble.py` | **0.616** | `<pending>` | Best ensemble result of the night — clearly above both individual models, unlike earlier attempts where the image model was too weak to add value. |
 
 ## Ideas queued for the next runs
-- Investigate why multi-slice averaging hurt Fracture/Contusion specifically — maybe those need a slice-attention/max-pooling approach instead of a flat average, since the finding is very localized to one slice.
-- Data augmentation (flips, small rotations) for the image model, now that CV is in place to measure its effect honestly.
+- Investigate why the image model stays weak on Fracture and ACL specifically — possibly needs more epochs (only 5 so far) now that augmentation regularizes training, or a loss that weights hard/rare labels more.
+- Try more epochs now that augmentation is in place (5 was tuned for a non-augmented, quickly-overfitting model; augmented training may benefit from training longer).
 - Swap ImageNet ResNet18 for a biomedical-pretrained backbone (e.g. BiomedCLIP, available in the competition's "Models" tab) as the image feature extractor.
 - If pseudo-labeling is revisited: try keyword-rule pseudo-labels (independent of our own classifier, so no self-reinforcing errors) instead of self-training, or only pseudo-label with a classifier trained on ALL 58 labeled studies (not just a fold's ~46) once we're not measuring CV on it.
 - Multi-plane fusion didn't help as a flat average across planes/slices — a smarter fusion (e.g. per-plane sub-model, or attention over slices instead of mean-pooling) might do better than just adding more inputs to the same averaging scheme.
