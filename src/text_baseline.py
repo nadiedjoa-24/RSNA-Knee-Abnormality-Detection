@@ -26,10 +26,14 @@ def build_pipeline(
     analyzer: str = "char_wb",
     ngram_range: tuple = (4, 6),
     classifier=None,
+    max_features: int | None = 50_000,
 ) -> Pipeline:
     # Picked via model_search.py: char(4,6) n-grams + SGD(log_loss) beat the
     # original char(3,5)+LogisticRegression default (0.604 vs 0.564 macro AUC,
     # 5-fold CV on the 58 labeled studies).
+    # max_features bounds the vocabulary so fitting stays fast even on much
+    # larger corpora (e.g. the ~4400-report pseudo-labeling pool in
+    # src/pseudo_label.py), not just the 58 labeled reports.
     if classifier is None:
         classifier = SGDClassifier(
             loss="log_loss", alpha=1e-3, class_weight="balanced", random_state=RANDOM_STATE
@@ -43,6 +47,7 @@ def build_pipeline(
                     ngram_range=ngram_range,
                     min_df=2,
                     sublinear_tf=True,
+                    max_features=max_features,
                 ),
             ),
             ("clf", classifier),

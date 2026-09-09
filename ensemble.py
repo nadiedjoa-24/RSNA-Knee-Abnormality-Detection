@@ -39,7 +39,22 @@ def main():
 
     print(f"\nMacro AUC — text: {macro_auc(text_scores):.3f} | "
           f"image: {macro_auc(image_scores):.3f} | "
-          f"ensemble: {macro_auc(ensemble_scores):.3f}")
+          f"ensemble (50/50): {macro_auc(ensemble_scores):.3f}")
+
+    print("\nWeight sweep (text_weight, macro AUC) — approximate: weight is picked"
+          " by looking at all 58 OOF predictions, not re-nested in CV:")
+    best = (0.5, macro_auc(ensemble_scores))
+    for text_weight in [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]:
+        blend = pd.DataFrame({"StudyInstanceUID": merged["StudyInstanceUID"]})
+        for label in LABELS:
+            blend[label] = (
+                text_weight * merged[f"{label}_text"] + (1 - text_weight) * merged[f"{label}_image"]
+            )
+        macro = macro_auc(per_label_auc(blend, truth))
+        print(f"  {text_weight:.1f}  {macro:.3f}")
+        if macro > best[1]:
+            best = (text_weight, macro)
+    print(f"\nBest blend: text_weight={best[0]:.1f} -> macro AUC {best[1]:.3f}")
 
 
 if __name__ == "__main__":

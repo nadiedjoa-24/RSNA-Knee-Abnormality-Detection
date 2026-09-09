@@ -34,37 +34,47 @@ def compute_oof_pseudo(
     unlabeled_df: pd.DataFrame,
     folds: np.ndarray,
     pipeline_factory: PipelineFactory = build_pipeline,
-    threshold: float = 0.9,
-) -> pd.DataFrame:
+    thresholds: tuple = (0.9,),
+) -> dict:
+    """Returns {threshold: oof_dataframe}. Stage 1 (fold-local classifier used
+    to score the unlabeled pool) is fit once per (label, fold) and reused
+    across all thresholds — only stage 2 (refit on augmented data) repeats
+    per threshold, since that's the part whose training set actually changes."""
     texts = labeled_df["Report"].values
     unlabeled_texts = unlabeled_df["Report"].values
-    oof = pd.DataFrame({"StudyInstanceUID": labeled_df["StudyInstanceUID"].values})
+    oofs = {t: pd.DataFrame({"StudyInstanceUID": labeled_df["StudyInstanceUID"].values}) for t in thresholds}
 
     for label in LABELS:
         y = labeled_df[label].values.astype(int)
-        preds = np.full(len(y), 0.5)
+        preds_by_threshold = {t: np.full(len(y), 0.5) for t in thresholds}
         for fold_id in np.unique(folds):
             train_idx = folds != fold_id
             val_idx = folds == fold_id
             y_train = y[train_idx]
             if len(np.unique(y_train)) < 2:
-                preds[val_idx] = y_train.mean()
+                for t in thresholds:
+                    preds_by_threshold[t][val_idx] = y_train.mean()
                 continue
 
             # Stage 1: fit on this fold's labeled training data only, then
-            # pseudo-label the unlabeled pool with it (no leakage from val fold).
+            # score the unlabeled pool with it (no leakage from val fold).
             stage1 = pipeline_factory()
             stage1.fit(texts[train_idx], y_train)
-            pseudo_texts, pseudo_labels = pseudo_label_confident(stage1, unlabeled_texts, threshold)
+            unlabeled_probs = stage1.predict_proba(unlabeled_texts)[:, 1]
 
-            # Stage 2: refit on labeled-train + confident pseudo-labels, predict val fold.
-            aug_texts = np.concatenate([texts[train_idx], pseudo_texts])
-            aug_labels = np.concatenate([y_train, pseudo_labels])
-            stage2 = pipeline_factory()
-            stage2.fit(aug_texts, aug_labels)
-            preds[val_idx] = stage2.predict_proba(texts[val_idx])[:, 1]
-        oof[label] = preds
-    return oof
+            for t in thresholds:
+                confident = (unlabeled_probs >= t) | (unlabeled_probs <= 1 - t)
+                pseudo_texts = unlabeled_texts[confident]
+                pseudo_labels = (unlabeled_probs[confident] >= t).astype(int)
+
+                aug_texts = np.concatenate([texts[train_idx], pseudo_texts])
+                aug_labels = np.concatenate([y_train, pseudo_labels])
+                stage2 = pipeline_factory()
+                stage2.fit(aug_texts, aug_labels)
+                preds_by_threshold[t][val_idx] = stage2.predict_proba(texts[val_idx])[:, 1]
+        for t in thresholds:
+            oofs[t][label] = preds_by_threshold[t]
+    return oofs
 
 
 def train_final_models_pseudo(
