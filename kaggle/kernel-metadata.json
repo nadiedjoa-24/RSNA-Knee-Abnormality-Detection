@@ -1,5 +1,5 @@
 {
-  "id": "theophilenadiedjoa/rsna-knee-image-baseline",
+  "id": "theophilenadiedjoa/rsna-knee-image-baseline-skeleton",
   "title": "RSNA Knee - Image Baseline (skeleton)",
   "code_file": "image_baseline.ipynb",
   "language": "python",
