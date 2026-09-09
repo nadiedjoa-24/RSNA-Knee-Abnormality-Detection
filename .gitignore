@@ -1,0 +1,8 @@
+data/
+models/*.pt
+models/*.pth
+models/*.ckpt
+submissions/*.csv
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
