@@ -32,7 +32,7 @@ our own local/CV validation split — not the real leaderboard score.
 | 2026-09-10 | Text + image ensemble (post-augmentation) | Local | 50/50 average of text (0.601) + augmented image (0.590) OOF — `ensemble.py` | **0.616** | `7b3dfae` | Best ensemble result of the night — clearly above both individual models, unlike earlier attempts where the image model was too weak to add value. |
 
 | 2026-09-10 | Image baseline v8 (15 epochs) | Kaggle (CPU) | Same as v7 (augmented), but 15 epochs instead of 5 | 0.571 | `eb701aa` | **Worse than v7's 0.590** — train loss drops to ~0.20-0.25 by epoch 15 (vs ~0.44-0.47 at epoch 5), i.e. it overfits the 58 (augmented) studies harder despite augmentation. Reverted to 5 epochs. |
-| 2026-09-10 | Image baseline v9 (8 epochs) | Kaggle (CPU) | Same as v7 (augmented), but 8 epochs instead of 5 | 0.567 | `<pending>` | Also worse than v7's 0.590. **5/8/15 epochs -> 0.590/0.567/0.571 — 5 is clearly the best of the three, not just "smaller is better."** Settled on N_EPOCHS=5 for this architecture/data size; not spending more runs on this axis. |
+| 2026-09-10 | Image baseline v9 (8 epochs) | Kaggle (CPU) | Same as v7 (augmented), but 8 epochs instead of 5 | 0.567 | `6fd624a` | Also worse than v7's 0.590. **5/8/15 epochs -> 0.590/0.567/0.571 — 5 is clearly the best of the three, not just "smaller is better."** Settled on N_EPOCHS=5 for this architecture/data size; not spending more runs on this axis. |
 
 ## Ideas queued for the next runs
 - Investigate why the image model stays weak on Fracture and ACL specifically — a loss that weights hard/rare labels more, or focusing on those labels' most informative plane specifically, might help more than generic epoch/architecture tuning.
